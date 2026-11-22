@@ -1,6 +1,6 @@
 # Pet Clinic — Progress Log
 
-Last updated: 2026-10-19
+Last updated: 2026-11-22
 
 Working agreement is in [projectObjectives.md](projectObjectives.md), section 0
 (I do the work, the assistant reviews and shows alternatives, no prescribing).
@@ -9,23 +9,24 @@ Working agreement is in [projectObjectives.md](projectObjectives.md), section 0
 
 ## Current task
 
-**Notion task 1:** Draft domain model + ERD (v1 scope below).
+**Notion task 2:** Define phase-1 Spring Boot package structure (package-by-feature). In progress.
 
-Planned order:
-1. Define core entities (done, see below)
-2. Draw a context diagram (actors, system, external systems)
-3. Create the ERD from it, then share for review
+**Done:** Notion task 1, domain model + ERD (v1 scope below).
 
-**Next step:** I create the ERD and share it for review.
+ERD content (v1):
+- `user`: `email`, `password`, `role`
+- `owner`: 1:1 with `user`
+- `vet`: 1:1 with `user`
+- `pet`: N:1 `owner` (owner 1:N pet)
+- `appointment`: N:1 `pet` (pet 1:N appointment) and N:1 `vet` (vet 1:N appointment)
 
 ---
 
 ## Notion
 
-Database: "pet clinic tasks". Tasks created (all TODO):
-1. Draft domain model + ERD + bounded-context breakdown
-2. Define phase-1 Spring Boot package structure (package-by-feature)
-3. Set up repo, CI pipeline skeleton, docker-compose (Postgres)
+Database: "pet clinic tasks" (tasks as of 2026-11-22):
+1. Draft domain model + ERD + bounded-context breakdown: **Done**
+2. Define phase-1 Spring Boot package structure (package-by-feature): **In Progress**
 
 Remaining backlog (add later, only when asked): first ADR, Owners/Pets/Vets CRUD + JWT MVP,
 Spec Kit frontend.
@@ -34,38 +35,41 @@ Spec Kit frontend.
 
 ## Decisions so far
 
-### Scope (v1)
-- Entities: **owner, pet, vet, appointment, notification**
+### Scope (v1) — start small
+- Entities: **user** (`email`, `password`, `role`), **owner**, **vet**, **pet**, **appointment**
+- Relationships: user 1:1 owner, user 1:1 vet, owner 1:N pet, pet 1:N appointment,
+  vet 1:N appointment
+- **Notifications removed from v1** (moved to later phase)
 - Out of scope for now: payment/billing, visits, medical records, vaccinations
 - Frontend: not a focus, generated later with Spec Kit + LLM from the OpenAPI spec
 - Skipping DDD vocabulary. Only grouping by feature (package-by-feature) later.
 
-### Accounts and roles
-- `user_account` holds login data and a `role` column: **USER or ADMIN**
-- `owner` and `vet` are **profile tables**, each with a `user_account_id` FK
-- Whether an account is a vet or owner is decided by whether the profile row exists
-- One account can have both an owner and a vet profile (user switches at login)
-- Admin = account with role ADMIN (can also have vet/owner profiles)
-- Admin capabilities: admin tab with dashboard of all vets and owners, can
-  delete/manage them, can see every appointment for each doctor
+### Accounts and roles (updated 2026-11-22)
+Three roles:
+- **ADMIN** = the doctor (vet): sees their own appointments
+- **PATIENT** = a person with their pet(s)
+- **OWNER** = the clinic owner: adds/removes vets, assigns vets (exact meaning of
+  "assign" still to pin down, see open questions)
+
+- `user` holds login data (`email`, `password`) and a `role` column
+- `owner` and `vet` are profile tables, each 1:1 with `user`
 - No separate role table for now (a `role` column is enough)
-- Possible future role: `clinic_admin` (not decided)
+- Replaces the earlier USER/ADMIN model and the "admin dashboard of all vets and
+  owners" idea; that capability now belongs to the clinic OWNER
 
 ---
 
 ## Open questions (to decide while drawing the ERD)
 
-- Unique `user_account_id` on `owner` and `vet` (one profile of each type per account)?
+- "Owner assigns vets": assign vets to what? (patients, appointments, a clinic/role?)
+- Can one account hold more than one role (e.g. a vet who is also a patient)? If
+  not, a single `role` column is enough
+- Naming clash: role OWNER (clinic owner) vs. `owner` entity (pet owner). Rename one?
+- Unique `user_id` on `owner` and `vet` (enforces the 1:1)?
 - `role` as varchar + check constraint vs. Postgres enum
-- Single `role` column vs. `user_role` join table, if roles ever need to combine
-  or `clinic_admin` has partial admin powers
-- Is `clinic_admin` scoped to a clinic? (matters only if multi-clinic)
-- Active profile: JWT carries active profile (switch issues a new token) vs. all
-  profiles in the token
 - Rule: can a vet be the vet on an appointment for their own pet?
-- Deleting vets/owners: soft delete vs. hard delete vs. block when dependents
-  exist vs. deactivate
-- Audit log for admin actions (optional for MVP)
+- Deleting vets/patients: soft delete vs. hard delete vs. block when dependents
+  exist vs. deactivate (matters when the owner removes a vet with appointments)
 - Vet availability: working hours table, no availability (any time bookable unless
   conflicting), or pre-generated slots
 - Vet specialties: skip, or a plain string column
@@ -74,9 +78,6 @@ Spec Kit frontend.
 - Double-booking protection: pessimistic lock, optimistic lock (`version` column),
   or DB constraint (unique on vet + start, or Postgres exclusion constraint on a
   time range)
-- Notification: recipient (`user_account` or owner only), trigger (appointment created,
-  reminder N hours before), what it references, status (pending/sent/failed) to
-  support async sending later
 - Cross-cutting ERD choices: ID type (UUID vs. bigint), time handling (UTC),
   audit columns (`created_at`, `updated_at`), enum vs. lookup table for statuses
 

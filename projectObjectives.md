@@ -35,19 +35,37 @@ engineer; do not explain basics or use unnecessary jargon.
 
 Model the domain before writing any code.
 
-### Core entities
-- **Owner** → has many **Pets**
-- **Pet** → has **MedicalHistory**, **Vaccinations**
-- **Vet** → has **Specialties**, a **Schedule**
-- **Appointment** → links Owner/Pet/Vet + time slot + status
+### MVP scope (start small)
+Entities: **User, Owner, Vet, Pet, Appointment**
+- **User**: `email`, `password`, `role`
+- **Owner**: the person who owns pets (profile of a User)
+- **Vet**: the doctor (profile of a User)
+- **Pet**: belongs to an Owner
+- **Appointment**: links Pet + Vet + time slot + status
+- **No notifications in the MVP.**
+
+Relationships:
+- User 1:1 Owner
+- User 1:1 Vet
+- Owner 1:N Pet
+- Pet 1:N Appointment
+- Vet 1:N Appointment
+
+### Roles
+- **ADMIN** = the doctor (vet): sees their own appointments
+- **PATIENT** = a person with their pet(s): manages pets, books appointments
+- **OWNER** = the clinic owner: adds/removes vets and manages vet assignments
+
+### Later (not in MVP)
+- **Notification** → reminders
+- **MedicalHistory**, **Vaccinations**, **Specialties**
 - **Visit** → outcome of an appointment (diagnosis, prescriptions)
 - **Invoice / Billing** → tied to visits
-- **Notification** → reminders
 
 ### Criteria
 - Write the domain model + an **ERD** and a **context diagram** before coding.
-- Practice **Domain-Driven Design**: identify bounded contexts —
-  **Scheduling**, **Medical Records**, **Billing**, **Notifications**.
+- Practice **Domain-Driven Design**: identify bounded contexts. MVP needs only
+  **Scheduling**; **Medical Records**, **Billing**, **Notifications** come later.
 
 ---
 
@@ -77,8 +95,8 @@ Deliberately evolve the architecture so you *feel* why each step exists.
 - **Persistence**: Spring Data JPA + **PostgreSQL**; schema via **Flyway/Liquibase**.
 - **Validation**: Bean Validation (`@Valid`), custom validators.
 - **Error handling**: global `@RestControllerAdvice`, consistent error payloads.
-- **Security**: **Spring Security + JWT**, role-based (Owner, Vet, Admin).
-  Later: **OAuth2 / OIDC** with Keycloak.
+- **Security**: **Spring Security + JWT**, role-based (Owner = clinic owner, Admin = vet/doctor, Patient).
+  Later: **OAuth2 / OIDC** with Keycloak, add many distinct staff types (like RECEPTIONIST, NURSE, BILLING) with overlapping permissions.
 - **Testing**: unit (JUnit5 + Mockito), integration (**Testcontainers** for real Postgres),
   API tests. Aim for meaningful coverage, not 100%.
 - **Async & events**: start with Spring `ApplicationEventPublisher`, then
@@ -131,7 +149,8 @@ Pick a few and go deep rather than all shallow.
 
 ## 7. Feature Roadmap (Incremental Complexity)
 
-1. **MVP monolith**: owners, pets, vets CRUD + auth.
+1. **MVP monolith** (no notifications): patients, pets, vets CRUD + auth with the
+   three roles (Owner, Admin/vet, Patient); owner manages vets.
    *(layering, REST, JPA, security)*
 2. **Appointment scheduling**: slot management, conflict detection.
    *(business logic, concurrency — vets double-booking is a great concurrency problem)*
@@ -175,5 +194,5 @@ Pick a few and go deep rather than all shallow.
 - [ ] Set up Spec Kit and generate a minimal Angular FE from the OpenAPI spec (low priority)
 - [ ] Set up repo, CI pipeline skeleton, docker-compose (Postgres)
 - [ ] Write first ADR: "Why modular monolith to start"
-- [ ] Implement Owners/Pets/Vets CRUD + JWT auth (MVP)
+- [ ] Implement Patients/Pets/Vets CRUD + JWT auth with 3 roles (MVP, no notifications)
 
